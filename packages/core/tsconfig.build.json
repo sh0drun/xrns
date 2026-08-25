@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // No node types and no DOM lib. The build fails rather than warns if anything
+    // in core reaches for a platform, which is the whole reason core exists.
+    "types": [],
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "sourceMap": true
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/test-helpers"]
+}
