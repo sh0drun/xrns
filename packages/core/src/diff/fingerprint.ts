@@ -1,0 +1,75 @@
+import { isEmptyEffectColumn, isEmptyLine, isEmptyNoteColumn } from "../domain/line.js";
+import type { EffectColumn, Line, NoteColumn } from "../domain/line.js";
+import type { Note } from "../domain/note.js";
+import type { PatternTrack } from "../domain/pattern.js";
+
+/**
+ * Two tracks with the same fingerprint hold the same music
+ *
+ * Name, content past the pattern's end and trailing empty columns all stay out, so none
+ * of them can make an unchanged track look changed
+ */
+export function fingerprintTrack(track: PatternTrack, numberOfLines: number): string {
+  if (track.aliasPatternIndex !== undefined) {
+    return JSON.stringify(["alias", track.aliasPatternIndex]);
+  }
+
+  const lines = track.lines
+    .filter((line) => line.index < numberOfLines && !isEmptyLine(line))
+    .map(serializeLine);
+
+  return JSON.stringify(lines);
+}
+
+/**
+ * Takes fingerprints already in a shared order rather than a Pattern
+ *
+ * A pattern's own track list is positional, so inserting one track in the song shifts
+ * every pattern and the whole song reads as rewritten
+ */
+export function fingerprintPattern(numberOfLines: number, tracks: readonly string[]): string {
+  return JSON.stringify([numberOfLines, tracks]);
+}
+
+function serializeLine(line: Line): unknown[] {
+  return [
+    line.index,
+    withoutTrailingEmpty(line.noteColumns, isEmptyNoteColumn).map(serializeNoteColumn),
+    withoutTrailingEmpty(line.effectColumns, isEmptyEffectColumn).map(serializeEffectColumn),
+  ];
+}
+
+function serializeNoteColumn(column: NoteColumn): unknown[] {
+  return [
+    noteKey(column.note),
+    column.instrument ?? null,
+    column.volume ?? null,
+    column.panning ?? null,
+    column.delay ?? null,
+    column.effectNumber ?? null,
+    column.effectValue ?? null,
+  ];
+}
+
+function serializeEffectColumn(column: EffectColumn): unknown[] {
+  return [column.number ?? null, column.value ?? null];
+}
+
+function noteKey(note: Note | undefined): string | number | null {
+  if (note === undefined) return null;
+  return note.kind === "off" ? "off" : note.semitone;
+}
+
+/** Only trailing ones can go since an empty column between two used ones holds a position */
+function withoutTrailingEmpty<T>(
+  columns: readonly T[],
+  isEmpty: (item: T) => boolean,
+): readonly T[] {
+  let end = columns.length;
+  while (end > 0) {
+    const column = columns[end - 1];
+    if (column === undefined || !isEmpty(column)) break;
+    end -= 1;
+  }
+  return columns.slice(0, end);
+}
