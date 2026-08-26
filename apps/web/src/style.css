@@ -131,3 +131,79 @@ body.dragging {
   color: var(--text-lit);
   box-shadow: inset 2px 0 0 var(--accent);
 }
+
+.diff-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2.5ch;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.diff .fields {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* Unchanged settings stay visible but recede, so what was checked is still readable */
+.field {
+  color: var(--text-dim);
+}
+
+.field.changed .field-value {
+  color: var(--text-lit);
+}
+
+.diff h2 {
+  margin: 1.5rem 0 0.25rem;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/*
+  Change is luminance rather than hue: what arrived is lit, what went is dimmed
+  A deletion is content that is gone, so it should recede rather than shout
+*/
+.row.added {
+  color: var(--text-lit);
+}
+
+.row.removed {
+  color: var(--text-dim);
+}
+
+.row.changed {
+  color: var(--accent);
+}
+
+.row.quiet {
+  color: var(--text-dim);
+}
+
+.diff .slot {
+  color: var(--text-dim);
+}
+
+.diff .slot.inserted {
+  background: var(--raised);
+  color: var(--text-lit);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.slot.removed {
+  background: transparent;
+  color: var(--text-dim);
+  text-decoration: line-through;
+}
+
+/* The pattern is what changed, the tracks are where, so they should not read alike */
+.row-detail {
+  color: var(--text-dim);
+}
