@@ -1,49 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { pitch } from "../domain/note.js";
-import type { Pattern } from "../domain/pattern.js";
-import type { Song } from "../domain/song.js";
-import type { Track, TrackType } from "../domain/track.js";
+import { pattern, song, track } from "../test-helpers/build.js";
 import { alignTracks } from "./align-tracks.js";
-
-function track(index: number, name: string, type: TrackType = "sequencer"): Track {
-  return {
-    index,
-    type,
-    name,
-    visibleNoteColumns: 1,
-    visibleEffectColumns: 0,
-    groupNestingLevel: 0,
-  };
-}
-
-/** One line at index 0 per track, or nothing at all where the semitone is undefined */
-function pattern(index: number, semitones: readonly (number | undefined)[]): Pattern {
-  return {
-    index,
-    numberOfLines: 4,
-    tracks: semitones.map((semitone, trackIndex) => ({
-      trackIndex,
-      lines:
-        semitone === undefined
-          ? []
-          : [{ index: 0, noteColumns: [{ note: pitch(semitone) }], effectColumns: [] }],
-    })),
-  };
-}
-
-function song(tracks: readonly Track[], patterns: readonly Pattern[] = []): Song {
-  return {
-    docVersion: 67,
-    name: "",
-    artist: "",
-    beatsPerMinute: 120,
-    linesPerBeat: 4,
-    ticksPerLine: 12,
-    tracks,
-    patterns,
-    sequence: [],
-  };
-}
 
 describe("alignTracks", () => {
   it("matches a track by type and name", () => {

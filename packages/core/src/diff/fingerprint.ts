@@ -3,6 +3,9 @@ import type { EffectColumn, Line, NoteColumn } from "../domain/line.js";
 import type { Note } from "../domain/note.js";
 import type { PatternTrack } from "../domain/pattern.js";
 
+/** What a track holding nothing fingerprints as, derived so it cannot drift from the format */
+export const NO_TRACK_CONTENT = fingerprintTrack({ trackIndex: 0, lines: [] }, 0);
+
 /**
  * Two tracks with the same fingerprint hold the same music
  *

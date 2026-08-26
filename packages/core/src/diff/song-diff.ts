@@ -20,6 +20,10 @@ export interface Changed<T> {
   readonly to: T;
 }
 
+export function change<T extends string | number>(from: T, to: T): Change<T> {
+  return from === to ? { kind: "same", value: to } : { kind: "changed", from, to };
+}
+
 export interface PatternRef {
   readonly index: number;
   readonly name?: string;

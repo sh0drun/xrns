@@ -1,6 +1,6 @@
 import type { Song } from "../domain/song.js";
 import type { Track } from "../domain/track.js";
-import { fingerprintTrack } from "./fingerprint.js";
+import { NO_TRACK_CONTENT, fingerprintTrack } from "./fingerprint.js";
 
 /** One slot in the shared track order, holding whichever side has a track there */
 export interface AlignedTrack {
@@ -10,9 +10,6 @@ export interface AlignedTrack {
 
 /** Tuned against guesswork until there are real pairs of songs to run it on */
 const MIN_RENAME_SIMILARITY = 0.5;
-
-/** What a track with nothing in it fingerprints as, kept in step with the fingerprint itself */
-const NO_CONTENT = fingerprintTrack({ trackIndex: 0, lines: [] }, 0);
 
 /**
  * Matches tracks by type and name first, then tries the leftovers by content so a renamed
@@ -106,7 +103,7 @@ function contentOf(song: Song, trackIndex: number): ReadonlySet<string> {
     const track = pattern.tracks[trackIndex];
     if (track === undefined) continue;
     const print = fingerprintTrack(track, pattern.numberOfLines);
-    if (print !== NO_CONTENT) prints.add(print);
+    if (print !== NO_TRACK_CONTENT) prints.add(print);
   }
 
   return prints;
