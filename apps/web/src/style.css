@@ -15,7 +15,7 @@
   --text-dim: #6d788c;
   --text-lit: #f0f4fa;
 
-  --accent: #58c0d8;
+  --accent: #e0653a;
 
   --mono: ui-monospace, "Cascadia Mono", "Consolas", "DejaVu Sans Mono", monospace;
   --line: 1.375rem;
@@ -40,10 +40,30 @@ body.dragging {
   outline-offset: -8px;
 }
 
+.masthead,
 #app {
   max-width: 88ch;
   margin-inline: auto;
-  padding: 2rem;
+  padding-inline: 2rem;
+}
+
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: 1ch;
+  padding-top: 2rem;
+}
+
+.masthead img {
+  display: block;
+}
+
+.wordmark {
+  color: var(--text-lit);
+}
+
+#app {
+  padding-block: 1.5rem 2rem;
 }
 
 .drop-hint {

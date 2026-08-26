@@ -4,11 +4,20 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>xrns</title>
+    <meta
+      name="description"
+      content="Read Renoise .xrns song files in the browser and diff two versions of a song. Nothing is uploaded."
+    />
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
+    <header class="masthead">
+      <img src="/logo.svg" width="18" height="18" alt="" />
+      <span class="wordmark">xrns</span>
+    </header>
     <main id="app">
-      <p class="drop-hint">Drop an .xrns file</p>
+      <p class="drop-hint">Drop an .xrns file, then a second one to compare</p>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -1,4 +1,6 @@
-# xrns
+<p align="center">
+  <img src="apps/web/public/lockup.svg" width="96" alt="xrns">
+</p>
 
 A browser tool for Renoise song files. Drop an `.xrns` in and see what is inside it:
 song structure, tracks, patterns, notes. Then diff it against another version of the
