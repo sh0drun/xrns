@@ -1,0 +1,133 @@
+/*
+  Dark on purpose, so every colour is painted rather than inherited
+
+  The ground is a slate carrying a blue cast toward the accent, not a neutral grey
+  Change is spent as luminance: lit for added, dimmed for removed, one hue for changed
+*/
+
+:root {
+  --ground: #101319;
+  --panel: #161b24;
+  --raised: #1c222d;
+  --rule: #262d3a;
+
+  --text: #c6cfdd;
+  --text-dim: #6d788c;
+  --text-lit: #f0f4fa;
+
+  --accent: #58c0d8;
+
+  --mono: ui-monospace, "Cascadia Mono", "Consolas", "DejaVu Sans Mono", monospace;
+  --line: 1.375rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: var(--line);
+}
+
+body.dragging {
+  outline: 1px solid var(--accent);
+  outline-offset: -8px;
+}
+
+#app {
+  max-width: 88ch;
+  margin-inline: auto;
+  padding: 2rem;
+}
+
+.drop-hint {
+  color: var(--text-dim);
+}
+
+.song-header {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.song-header h1 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-lit);
+}
+
+/* Two lines for every song, rather than one that wraps whenever a name runs long */
+.fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2.5ch;
+}
+
+.field-label {
+  color: var(--text-dim);
+  padding-right: 0.5ch;
+}
+
+.field-value {
+  color: var(--text);
+}
+
+.tracks,
+.sequence {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tracks {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.track {
+  display: grid;
+  grid-template-columns: 2ch 1fr;
+  gap: 1.5ch;
+}
+
+/* Group membership is depth against document order, so indentation is the honest picture */
+.track-name {
+  padding-left: calc(var(--depth) * 2ch);
+}
+
+.track-index {
+  color: var(--text-dim);
+}
+
+.track-master .track-name,
+.track-send .track-name,
+.track-group .track-name {
+  color: var(--text-dim);
+}
+
+.sequence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  padding-top: 0.75rem;
+}
+
+.slot {
+  padding: 0 0.75ch;
+  background: var(--panel);
+  color: var(--text);
+}
+
+/* A section start is a mark the composer made, so it reads as a break in the run */
+.slot.section-start {
+  margin-left: 1ch;
+  background: var(--raised);
+  color: var(--text-lit);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
