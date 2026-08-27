@@ -9,10 +9,15 @@ import type { MetaDiff, SongDiff, TrackChange } from "./song-diff.js";
 /**
  * Tracks are aligned first because both the pattern matcher and the track list are
  * written against that shared order
+ *
+ * The alignment is a parameter so a caller that also diffs a pattern later can hand the
+ * same one back, rather than computing a second that might not agree with this
  */
-export function diffSongs(from: Song, to: Song): SongDiff {
-  const alignment = alignTracks(from, to);
-
+export function diffSongs(
+  from: Song,
+  to: Song,
+  alignment: readonly AlignedTrack[] = alignTracks(from, to),
+): SongDiff {
   return {
     meta: meta(from, to),
     tracks: tracks(from, to, alignment),

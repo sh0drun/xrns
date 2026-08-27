@@ -271,3 +271,79 @@ body.dragging {
   outline: 1px solid var(--accent);
   outline-offset: 2px;
 }
+
+.row.open {
+  cursor: pointer;
+}
+
+.pattern h2 {
+  margin: 0 0 0.75rem;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+/* Only as wide as the track's own data, so the beat band ends where the notes do */
+.track-grid {
+  width: max-content;
+  margin-bottom: 1.5rem;
+}
+
+.track-grid h3 {
+  margin: 0 0 0.25rem;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.line {
+  display: flex;
+  gap: 2ch;
+}
+
+/* The beat is the tracker's own rhythm, taken from the song rather than assumed */
+.line.beat {
+  background: var(--panel);
+}
+
+.line-index {
+  color: var(--text-dim);
+}
+
+.states {
+  display: grid;
+}
+
+.state {
+  display: flex;
+  gap: 2ch;
+  color: var(--text-dim);
+}
+
+.state.after {
+  color: var(--text);
+}
+
+.note-cell,
+.effect-cell {
+  display: flex;
+  gap: 1ch;
+}
+
+/* Removed content recedes and arriving content is lit, the same rule as everywhere else */
+.state.before .cell-changed {
+  text-decoration: line-through;
+}
+
+.state.after .cell-changed .field.moved {
+  color: var(--accent);
+}
+
+.state.before .cell-changed .field.moved {
+  color: var(--text-dim);
+}
+
+.fold {
+  color: var(--text-dim);
+  padding: 0.25rem 0;
+}

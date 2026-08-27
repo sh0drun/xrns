@@ -305,7 +305,9 @@ function patternRow(match: PatternMatch, names: readonly string[], pairs: Pairs)
     return item;
   }
 
-  item.className = "row changed";
+  item.className = "row changed open";
+  item.dataset.from = String(match.from.index);
+  item.dataset.to = String(match.to.index);
   const lines =
     match.numberOfLines.kind === "changed"
       ? ` ${String(match.numberOfLines.from)} to ${String(match.numberOfLines.to)} lines`
