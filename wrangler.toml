@@ -1,6 +1,14 @@
 name = "xrns"
 compatibility_date = "2026-08-27"
 
+# The dashboard refused to see the sh0drun.dev zone from this worker, so the
+# binding lives here instead. custom_domain creates the DNS record and the
+# route on deploy, and keeps both in version control.
+routes = [{ pattern = "xrns.sh0drun.dev", custom_domain = true }]
+
+# The site is reachable at its own name only.
+workers_dev = false
+
 # Static assets only, no server code. The whole tool runs in the browser.
 [assets]
 directory = "apps/web/dist"
