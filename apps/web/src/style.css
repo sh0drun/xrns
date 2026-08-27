@@ -41,6 +41,7 @@ body.dragging {
 }
 
 .masthead,
+#files,
 #app {
   max-width: 88ch;
   margin-inline: auto;
@@ -62,8 +63,36 @@ body.dragging {
   color: var(--text-lit);
 }
 
+#files {
+  padding-top: 1.5rem;
+}
+
 #app {
   padding-block: 1.5rem 2rem;
+}
+
+.file-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1ch;
+}
+
+/* A whole slot is the target, so the click area matches what it looks like */
+.file-slot {
+  display: flex;
+  gap: 1ch;
+  padding: 0 1ch;
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.file-slot.empty .field-value {
+  color: var(--text-dim);
+}
+
+.file-slot.over,
+.file-slot:focus-within {
+  outline: 1px solid var(--accent);
 }
 
 .drop-hint {
@@ -150,14 +179,6 @@ body.dragging {
   background: var(--raised);
   color: var(--text);
   box-shadow: inset 2px 0 0 var(--rule);
-}
-
-.diff-files {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 2.5ch;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--rule);
 }
 
 .diff .fields {

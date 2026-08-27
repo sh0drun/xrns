@@ -9,6 +9,16 @@
       content="Read Renoise .xrns song files in the browser and diff two versions of a song. Nothing is uploaded."
     />
     <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://xrns.sh0drun.dev/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://xrns.sh0drun.dev/" />
+    <meta property="og:title" content="xrns" />
+    <meta
+      property="og:description"
+      content="Read Renoise .xrns song files in the browser and diff two versions of a song. Nothing is uploaded."
+    />
+    <meta property="og:image" content="https://xrns.sh0drun.dev/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
@@ -16,8 +26,9 @@
       <img src="/logo.svg" width="18" height="18" alt="" />
       <span class="wordmark">xrns</span>
     </header>
+    <div id="files"></div>
     <main id="app">
-      <p class="drop-hint">Drop an .xrns file, then a second one to compare</p>
+      <p class="drop-hint">Choose or drop an .xrns file, then a second one to compare</p>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

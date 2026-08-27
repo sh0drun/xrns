@@ -7,12 +7,11 @@ import type {
 } from "@xrns/core/diff/song-diff.js";
 import type { SequenceEntry } from "@xrns/core/domain/sequence.js";
 
-export function renderDiff(before: string, after: string, diff: SongDiff): Node {
+export function renderDiff(diff: SongDiff): Node {
   const view = document.createElement("div");
   view.className = "diff";
   const pairs = pairPatterns(diff.patterns);
   view.append(
-    files(before, after),
     meta(diff),
     section("tracks", trackList(diff.tracks)),
     section("sequence", sequenceRows(diff.sequence, pairs)),
@@ -75,29 +74,6 @@ function link(view: HTMLElement): void {
     start(event.target);
   });
   view.addEventListener("focusout", stop);
-}
-
-function files(before: string, after: string): Node {
-  const element = document.createElement("header");
-  element.className = "diff-files";
-  element.append(labelled("before", before), labelled("after", after));
-  return element;
-}
-
-function labelled(label: string, value: string): Node {
-  const element = document.createElement("div");
-  element.className = "field";
-
-  const name = document.createElement("span");
-  name.className = "field-label";
-  name.textContent = label;
-
-  const content = document.createElement("span");
-  content.className = "field-value";
-  content.textContent = value;
-
-  element.append(name, content);
-  return element;
 }
 
 /** Unchanged settings stay on screen dimmed, so the reader can see what was checked */
