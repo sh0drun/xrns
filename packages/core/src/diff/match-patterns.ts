@@ -1,17 +1,19 @@
-import type { Pattern } from "../domain/pattern.js";
+import type { Pattern, PatternTrack } from "../domain/pattern.js";
 import type { Song } from "../domain/song.js";
 import type { AlignedTrack } from "./align-tracks.js";
-import { NO_TRACK_CONTENT, fingerprintPattern, fingerprintTrack } from "./fingerprint.js";
+import { NO_TRACK_CONTENT, fingerprintPattern, fingerprintTrack, lineKeys } from "./fingerprint.js";
 import { change } from "./song-diff.js";
 import type { PatternMatch, PatternRef } from "./song-diff.js";
 
-/** Guesswork until there are real pairs of songs to run it against */
+/** A share of the lines, not of the tracks, so half the pattern has to survive */
 const MIN_PATTERN_SIMILARITY = 0.5;
 
 interface Fingerprinted {
   readonly pattern: Pattern;
   /** One entry per aligned slot, so the two songs can be compared position by position */
   readonly tracks: readonly string[];
+  /** The same slots, resolved, so line keys can be built for the ones that need scoring */
+  readonly resolved: readonly (PatternTrack | undefined)[];
   readonly whole: string;
 }
 
@@ -54,14 +56,16 @@ function fingerprinted(
   alignment: readonly AlignedTrack[],
   side: (slot: AlignedTrack) => number | undefined,
 ): Fingerprinted {
-  const tracks = alignment.map((slot) => {
+  const resolved = alignment.map((slot) => {
     const index = side(slot);
-    if (index === undefined) return NO_TRACK_CONTENT;
-    const track = pattern.tracks[index];
-    return track === undefined ? NO_TRACK_CONTENT : fingerprintTrack(track, pattern.numberOfLines);
+    return index === undefined ? undefined : pattern.tracks[index];
   });
 
-  return { pattern, tracks, whole: fingerprintPattern(pattern.numberOfLines, tracks) };
+  const tracks = resolved.map((track) =>
+    track === undefined ? NO_TRACK_CONTENT : fingerprintTrack(track, pattern.numberOfLines),
+  );
+
+  return { pattern, tracks, resolved, whole: fingerprintPattern(pattern.numberOfLines, tracks) };
 }
 
 /** A song can hold the same pattern twice, so equal fingerprints pair in the order they appear */
@@ -86,48 +90,75 @@ function pairRemaining(older: Fingerprinted[], newer: Fingerprinted[], pairs: Pa
   const matchedOlder = new Set(pairs.map((pair) => pair.older.pattern.index));
   const matchedNewer = new Set(pairs.map((pair) => pair.newer.pattern.index));
 
-  const candidates: { older: Fingerprinted; newer: Fingerprinted; score: number }[] = [];
-  for (const a of older) {
-    if (matchedOlder.has(a.pattern.index)) continue;
-    for (const b of newer) {
-      if (matchedNewer.has(b.pattern.index)) continue;
-      const score = similarity(a, b);
-      if (score >= MIN_PATTERN_SIMILARITY) candidates.push({ older: a, newer: b, score });
+  const olderLeft = older.filter((item) => !matchedOlder.has(item.pattern.index));
+  const newerLeft = newer.filter((item) => !matchedNewer.has(item.pattern.index));
+
+  // Line keys cost more than track fingerprints, so only the leftovers pay for them
+  const keys = new Map<Fingerprinted, LineKeys[]>();
+  for (const item of [...olderLeft, ...newerLeft]) keys.set(item, keysOf(item));
+
+  const candidates: Pairing[] = [];
+  for (const a of olderLeft) {
+    for (const b of newerLeft) {
+      const score = similarity(keys.get(a) ?? [], keys.get(b) ?? []);
+      if (score >= MIN_PATTERN_SIMILARITY) {
+        candidates.push({ from: a.pattern.index, to: b.pattern.index, score });
+      }
     }
   }
 
   candidates.sort((a, b) => b.score - a.score);
 
+  const byIndex = new Map<number, Fingerprinted>();
+  for (const item of olderLeft) byIndex.set(item.pattern.index, item);
+
   const taken: Pair[] = [];
   const usedOlder = new Set<number>();
   const usedNewer = new Set<number>();
   for (const candidate of candidates) {
-    if (usedOlder.has(candidate.older.pattern.index)) continue;
-    if (usedNewer.has(candidate.newer.pattern.index)) continue;
-    usedOlder.add(candidate.older.pattern.index);
-    usedNewer.add(candidate.newer.pattern.index);
-    taken.push({ older: candidate.older, newer: candidate.newer, identical: false });
+    if (usedOlder.has(candidate.from) || usedNewer.has(candidate.to)) continue;
+    const a = byIndex.get(candidate.from);
+    const b = newerLeft.find((item) => item.pattern.index === candidate.to);
+    if (a === undefined || b === undefined) continue;
+    usedOlder.add(candidate.from);
+    usedNewer.add(candidate.to);
+    taken.push({ older: a, newer: b, identical: false });
   }
 
   return taken;
 }
 
+interface Pairing {
+  readonly from: number;
+  readonly to: number;
+  readonly score: number;
+}
+
+type LineKeys = ReadonlyMap<number, string>;
+
+function keysOf(item: Fingerprinted): LineKeys[] {
+  return item.resolved.map((track) =>
+    track === undefined ? new Map<number, string>() : lineKeys(track, item.pattern.numberOfLines),
+  );
+}
+
 /**
- * Only slots where at least one side holds something count
+ * How much of the two patterns is the same line for line
  *
- * Counting every slot would let two unrelated patterns in a 33 track song agree on the
- * 28 they both leave empty and score 0.85
+ * Comparing whole tracks instead would call a sparse pattern unrelated after two edits,
+ * since a track counts as different the moment one cell in it moves
  */
-function similarity(a: Fingerprinted, b: Fingerprinted): number {
+function similarity(a: readonly LineKeys[], b: readonly LineKeys[]): number {
   let shared = 0;
   let considered = 0;
 
-  for (const [slot, older] of a.tracks.entries()) {
-    const newer = b.tracks[slot];
-    if (newer === undefined) continue;
-    if (older === NO_TRACK_CONTENT && newer === NO_TRACK_CONTENT) continue;
-    considered += 1;
-    if (older === newer) shared += 1;
+  for (const [slot, older] of a.entries()) {
+    const newer = b[slot] ?? new Map<number, string>();
+    const indices = new Set([...older.keys(), ...newer.keys()]);
+    for (const index of indices) {
+      considered += 1;
+      if (older.get(index) === newer.get(index)) shared += 1;
+    }
   }
 
   return considered === 0 ? 0 : shared / considered;
@@ -162,7 +193,7 @@ function describe(
       kind: "modified",
       from: ref(pair.older.pattern),
       to: ref(item.pattern),
-      similarity: similarity(pair.older, item),
+      similarity: similarity(keysOf(pair.older), keysOf(item)),
       numberOfLines: change(pair.older.pattern.numberOfLines, item.pattern.numberOfLines),
       changedTracks: changedTracks(pair.older, item),
     };

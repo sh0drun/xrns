@@ -34,6 +34,31 @@ export function fingerprintPattern(numberOfLines: number, tracks: readonly strin
   return JSON.stringify([numberOfLines, tracks]);
 }
 
+/** Where an aliased track's identity sits, since it has no lines of its own */
+const ALIAS_LINE = -1;
+
+/**
+ * One key per line that holds something, for judging how alike two tracks are
+ *
+ * A whole-track fingerprint says only same or different, which makes a track with one
+ * edited cell look as unrelated as a track that was rewritten
+ */
+export function lineKeys(track: PatternTrack, numberOfLines: number): ReadonlyMap<number, string> {
+  if (track.aliasPatternIndex !== undefined) {
+    return new Map([[ALIAS_LINE, JSON.stringify(["alias", track.aliasPatternIndex])]]);
+  }
+
+  const keys = new Map<number, string>();
+  for (const line of track.lines) {
+    if (line.index >= numberOfLines || isEmptyLine(line)) continue;
+    const serialized = JSON.stringify(serializeLine(line));
+    const existing = keys.get(line.index);
+    keys.set(line.index, existing === undefined ? serialized : existing + serialized);
+  }
+
+  return keys;
+}
+
 function serializeLine(line: Line): unknown[] {
   return [
     line.index,
