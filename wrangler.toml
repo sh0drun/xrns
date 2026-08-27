@@ -1,0 +1,6 @@
+name = "xrns"
+compatibility_date = "2026-08-27"
+
+# Static assets only, no server code. The whole tool runs in the browser.
+[assets]
+directory = "apps/web/dist"
