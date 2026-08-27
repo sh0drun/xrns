@@ -144,12 +144,12 @@ body.dragging {
   color: var(--text);
 }
 
-/* A section start is a mark the composer made, so it reads as a break in the run */
+/* A section start is structure the composer marked, not news, so it stays quiet */
 .slot.section-start {
   margin-left: 1ch;
   background: var(--raised);
-  color: var(--text-lit);
-  box-shadow: inset 2px 0 0 var(--accent);
+  color: var(--text);
+  box-shadow: inset 2px 0 0 var(--rule);
 }
 
 .diff-files {
@@ -207,23 +207,67 @@ body.dragging {
   color: var(--text-dim);
 }
 
-.diff .slot {
+.sequence-rows {
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* One grid for both rows, so before and after cannot come apart */
+.chunk {
+  display: grid;
+  grid-template-columns: 7ch repeat(24, 3ch);
+  gap: 1px;
+}
+
+.gutter {
   color: var(--text-dim);
 }
 
-.diff .slot.inserted {
+.cell {
+  text-align: center;
+  background: var(--panel);
+  color: var(--text-dim);
+}
+
+/* No block at all, so the hole is the thing you see */
+.cell.gap {
+  background: transparent;
+}
+
+.cell.inserted {
   background: var(--raised);
   color: var(--text-lit);
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 
-.slot.removed {
-  background: transparent;
-  color: var(--text-dim);
+.cell.removed {
   text-decoration: line-through;
+}
+
+.cell.section-start {
+  box-shadow: inset 2px 0 0 var(--rule);
 }
 
 /* The pattern is what changed, the tracks are where, so they should not read alike */
 .row-detail {
   color: var(--text-dim);
+}
+
+/*
+  Pointing at a pattern shows every position it plays at
+  No transition: a highlight that fades reads as lag and tells you nothing extra
+*/
+.linking [data-pair]:not(.linked) {
+  opacity: 0.45;
+}
+
+/* Brighter, not outlined: orange already means changed and inserted */
+.cell.linked {
+  background: var(--raised);
+  color: var(--text-lit);
+}
+
+.row[data-pair]:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
 }

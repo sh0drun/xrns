@@ -5,18 +5,76 @@ import type {
   SongDiff,
   TrackChange,
 } from "@xrns/core/diff/song-diff.js";
+import type { SequenceEntry } from "@xrns/core/domain/sequence.js";
 
 export function renderDiff(before: string, after: string, diff: SongDiff): Node {
   const view = document.createElement("div");
   view.className = "diff";
+  const pairs = pairPatterns(diff.patterns);
   view.append(
     files(before, after),
     meta(diff),
     section("tracks", trackList(diff.tracks)),
-    section("sequence", sequenceStrip(diff.sequence)),
-    section("patterns", patternList(diff.patterns, trackNames(diff.tracks))),
+    section("sequence", sequenceRows(diff.sequence, pairs)),
+    section("patterns", patternList(diff.patterns, trackNames(diff.tracks), pairs)),
   );
+  link(view);
   return view;
+}
+
+/**
+ * A pattern keeps one identity across both songs
+ *
+ * Matching on the pattern index instead would link the wrong things, since the before
+ * row is numbered in the older song and the after row in the newer one
+ */
+interface Pairs {
+  readonly older: ReadonlyMap<number, string>;
+  readonly newer: ReadonlyMap<number, string>;
+  readonly of: (match: PatternMatch) => string;
+}
+
+function pairPatterns(matches: readonly PatternMatch[]): Pairs {
+  const older = new Map<number, string>();
+  const newer = new Map<number, string>();
+  const identities = new Map<PatternMatch, string>();
+
+  for (const [position, match] of matches.entries()) {
+    const id = `p${String(position)}`;
+    identities.set(match, id);
+    if (match.kind !== "added") older.set(match.from.index, id);
+    if (match.kind !== "removed") newer.set(match.to.index, id);
+  }
+
+  return { older, newer, of: (match) => identities.get(match) ?? "" };
+}
+
+/** Pointing at a pattern anywhere shows every position it plays at, and the reverse */
+function link(view: HTMLElement): void {
+  const start = (target: EventTarget | null): void => {
+    const source = target instanceof Element ? target.closest("[data-pair]") : null;
+    const pair = source instanceof HTMLElement ? source.dataset.pair : undefined;
+    if (pair === undefined) return;
+
+    view.classList.add("linking");
+    for (const element of view.querySelectorAll(`[data-pair="${pair}"]`)) {
+      element.classList.add("linked");
+    }
+  };
+
+  const stop = (): void => {
+    view.classList.remove("linking");
+    for (const element of view.querySelectorAll(".linked")) element.classList.remove("linked");
+  };
+
+  view.addEventListener("pointerover", (event) => {
+    start(event.target);
+  });
+  view.addEventListener("pointerout", stop);
+  view.addEventListener("focusin", (event) => {
+    start(event.target);
+  });
+  view.addEventListener("focusout", stop);
 }
 
 function files(before: string, after: string): Node {
@@ -133,24 +191,81 @@ function trackRow(change: TrackChange): Node {
   return item;
 }
 
-/** Kept positions hold their place, so an insertion opens a gap rather than shifting the rest */
-function sequenceStrip(changes: readonly SequenceChange[]): Node {
-  const strip = document.createElement("ol");
-  strip.className = "sequence";
+const COLUMNS_PER_CHUNK = 24;
 
-  for (const change of changes) {
-    const slot = document.createElement("li");
-    slot.className = `slot ${change.kind === "kept" ? "" : change.kind}`.trim();
-    const entry = change.kind === "removed" ? change.from : change.to;
-    slot.textContent = String(entry.patternIndex).padStart(2, "0");
-    if (entry.isSectionStart) slot.classList.add("section-start");
-    strip.append(slot);
+/**
+ * Both orders at once, before above after, one column per aligned position
+ *
+ * The two rows share a grid rather than being laid out separately, so they cannot drift
+ * apart, and a gap in one of them is where an edit happened
+ */
+function sequenceRows(changes: readonly SequenceChange[], pairs: Pairs): Node {
+  const wrapper = document.createElement("div");
+  wrapper.className = "sequence-rows";
+
+  if (changes.length === 0) {
+    wrapper.append(quiet("no sequence"));
+    return wrapper;
   }
 
-  return strip;
+  for (let start = 0; start < changes.length; start += COLUMNS_PER_CHUNK) {
+    wrapper.append(chunk(changes.slice(start, start + COLUMNS_PER_CHUNK), pairs));
+  }
+
+  return wrapper;
 }
 
-function patternList(matches: readonly PatternMatch[], names: readonly string[]): Node {
+function chunk(columns: readonly SequenceChange[], pairs: Pairs): Node {
+  const grid = document.createElement("div");
+  grid.className = "chunk";
+
+  grid.append(gutter("before"));
+  for (const column of columns) grid.append(cell(column, "before", pairs));
+  for (let filled = columns.length; filled < COLUMNS_PER_CHUNK; filled += 1) {
+    grid.append(document.createElement("div"));
+  }
+
+  grid.append(gutter("after"));
+  for (const column of columns) grid.append(cell(column, "after", pairs));
+
+  return grid;
+}
+
+function gutter(label: string): Node {
+  const element = document.createElement("div");
+  element.className = "gutter";
+  element.textContent = label;
+  return element;
+}
+
+function cell(change: SequenceChange, side: "before" | "after", pairs: Pairs): Node {
+  const element = document.createElement("div");
+  const entry = entryFor(change, side);
+
+  if (entry === undefined) {
+    element.className = "cell gap";
+    return element;
+  }
+
+  const pair = (side === "before" ? pairs.older : pairs.newer).get(entry.patternIndex);
+  element.className = `cell ${change.kind}`;
+  element.textContent = String(entry.patternIndex).padStart(2, "0");
+  if (pair !== undefined) element.dataset.pair = pair;
+  if (entry.isSectionStart) element.classList.add("section-start");
+  return element;
+}
+
+function entryFor(change: SequenceChange, side: "before" | "after"): SequenceEntry | undefined {
+  if (change.kind === "kept") return side === "before" ? change.from : change.to;
+  if (change.kind === "inserted") return side === "after" ? change.to : undefined;
+  return side === "before" ? change.from : undefined;
+}
+
+function patternList(
+  matches: readonly PatternMatch[],
+  names: readonly string[],
+  pairs: Pairs,
+): Node {
   const list = document.createElement("ul");
   list.className = "changes";
 
@@ -160,15 +275,17 @@ function patternList(matches: readonly PatternMatch[], names: readonly string[])
       identical += 1;
       continue;
     }
-    list.append(patternRow(match, names));
+    list.append(patternRow(match, names, pairs));
   }
 
   if (identical > 0) list.append(quiet(`${String(identical)} unchanged`));
   return list;
 }
 
-function patternRow(match: PatternMatch, names: readonly string[]): Node {
+function patternRow(match: PatternMatch, names: readonly string[], pairs: Pairs): Node {
   const item = document.createElement("li");
+  item.dataset.pair = pairs.of(match);
+  item.tabIndex = 0;
 
   if (match.kind === "added") {
     item.className = "row added";
