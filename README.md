@@ -16,6 +16,11 @@ DOM, so the same code runs in a page, in a worker and in a test.
 ## Running
 
     npm install
+    npm run dev
+
+That builds `packages/core`, starts Vite and prints a local address. Drop an `.xrns`
+file on the page, then a second one to compare against it.
+
     npm run check
 
 `check` runs the type checker, ESLint, Prettier and the tests.
