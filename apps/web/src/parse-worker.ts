@@ -1,3 +1,4 @@
+import { songMap } from "@xrns/core/analysis/song-map.js";
 import { alignTracks } from "@xrns/core/diff/align-tracks.js";
 import { diffPattern } from "@xrns/core/diff/diff-pattern.js";
 import { diffSongs } from "@xrns/core/diff/diff-songs.js";
@@ -5,6 +6,7 @@ import { RenoiseError } from "@xrns/core/domain/errors.js";
 import { readSongXml, readXrns } from "@xrns/core/xrns/archive.js";
 import { readSong } from "@xrns/core/xrns/reader.js";
 import { parseSongXml } from "@xrns/core/xrns/song-document.js";
+import type { SongMap } from "@xrns/core/analysis/song-map.js";
 import type { AlignedTrack } from "@xrns/core/diff/align-tracks.js";
 import type { PatternDiff } from "@xrns/core/diff/diff-pattern.js";
 import type { SongDiff } from "@xrns/core/diff/song-diff.js";
@@ -30,8 +32,14 @@ export interface PatternRequest {
 export type WorkerRequest = ParseRequest | PatternRequest;
 
 export type WorkerMessage =
-  | { readonly kind: "song"; readonly slot: Slot; readonly name: string; readonly song: Song }
-  | { readonly kind: "diff"; readonly diff: SongDiff }
+  | {
+      readonly kind: "song";
+      readonly slot: Slot;
+      readonly name: string;
+      readonly song: Song;
+      readonly map: SongMap;
+    }
+  | { readonly kind: "diff"; readonly diff: SongDiff; readonly map: SongMap }
   | {
       readonly kind: "pattern";
       readonly from: Pattern;
@@ -87,14 +95,15 @@ function parse(request: ParseRequest): void {
   }
 
   loaded.set(slot, song);
-  scope.postMessage({ kind: "song", slot, name, song });
+  scope.postMessage({ kind: "song", slot, name, song, map: songMap(song) });
 
   const before = loaded.get("before");
   const after = loaded.get("after");
   if (before === undefined || after === undefined) return;
 
   alignment = alignTracks(before, after);
-  scope.postMessage({ kind: "diff", diff: diffSongs(before, after, alignment) });
+  const diff = diffSongs(before, after, alignment);
+  scope.postMessage({ kind: "diff", diff, map: songMap(after) });
 }
 
 function openPattern(request: PatternRequest): void {

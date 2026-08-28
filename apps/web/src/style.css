@@ -368,3 +368,115 @@ body.dragging {
   color: var(--text-dim);
   padding: 0.25rem 0;
 }
+
+/*
+  Tracks down, playback order across, brightness by how much that track plays there
+  Columns are fractions of the row, so a long song gets thinner cells rather than a
+  sideways scrollbar
+*/
+.map-body {
+  display: flex;
+  align-items: stretch;
+  gap: 1ch;
+}
+
+.map-stack {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Same column template as the map, so it lines up without sharing its grid */
+.map-strip {
+  display: grid;
+  column-gap: 0;
+}
+
+/* Named down the side rather than left to the reader to work out */
+.map-axis {
+  color: var(--text-dim);
+  writing-mode: vertical-rl;
+  rotate: 180deg;
+  text-align: center;
+}
+
+/* Time markers sit at their column and are allowed to run past its width */
+.map-time {
+  overflow: visible;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* No gap between columns: a track's activity should read as one bar, not as a barcode */
+.song-map {
+  flex: 1;
+  display: grid;
+  column-gap: 0;
+  row-gap: 1px;
+  padding: 0.75rem 0 0.5rem;
+}
+
+/* The composer's own marks for the parts of the song, over the positions they cover */
+.map-section {
+  overflow: hidden;
+  padding-bottom: 0.25rem;
+  color: var(--text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 3ch;
+}
+
+.key-item {
+  display: flex;
+  align-items: center;
+  gap: 1ch;
+}
+
+.key-ramp {
+  display: flex;
+  gap: 1px;
+}
+
+/* Map cells are fractions of a row, so in the key they need a size of their own */
+.key-item .map-cell {
+  width: 2ch;
+  height: 1rem;
+}
+
+.key-note {
+  color: var(--text-dim);
+}
+
+.map-name {
+  overflow: hidden;
+  padding-right: 1.5ch;
+  color: var(--text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-cell {
+  height: var(--line);
+  background: color-mix(in srgb, var(--text) calc(var(--density, 0) * 70%), var(--panel));
+}
+
+.map-cell.map-changed {
+  background: var(--accent);
+}
+
+/*
+  Alternate parts of the song, so its structure shows through the map
+  The band changes what the density mixes into rather than covering it
+*/
+.map-cell.banded {
+  background: color-mix(in srgb, var(--text) calc(var(--density, 0) * 70%), var(--raised));
+}
+
+.linking .map-cell[data-pair]:not(.linked) {
+  opacity: 0.45;
+}

@@ -6,14 +6,26 @@ import type {
   TrackChange,
 } from "@xrns/core/diff/song-diff.js";
 import type { SequenceEntry } from "@xrns/core/domain/sequence.js";
+import type { SongMap } from "@xrns/core/analysis/song-map.js";
+import { renderMap } from "./render-map.js";
 
-export function renderDiff(diff: SongDiff): Node {
+export function renderDiff(diff: SongDiff, map: SongMap): Node {
   const view = document.createElement("div");
   view.className = "diff";
   const pairs = pairPatterns(diff.patterns);
+  const tracks = trackIndices(diff.tracks);
   view.append(
     meta(diff),
     section("tracks", trackList(diff.tracks)),
+    section(
+      "arrangement",
+      renderMap({
+        map,
+        names: byTrack(diff.tracks, tracks),
+        pairs: pairs.newer,
+        changed: changedByPattern(diff.patterns, tracks),
+      }),
+    ),
     section("sequence", sequenceRows(diff.sequence, pairs)),
     section("patterns", patternList(diff.patterns, trackNames(diff.tracks), pairs)),
   );
@@ -116,6 +128,54 @@ function section(title: string, body: Node): Node {
 
   element.append(heading, body);
   return element;
+}
+
+/** Aligned slot to the track index the newer song uses, undefined where it has none */
+function trackIndices(changes: readonly TrackChange[]): (number | undefined)[] {
+  return changes.map((change) => {
+    if (change.kind === "removed") return undefined;
+    if (change.kind === "added") return change.track.index;
+    return change.index.kind === "same" ? change.index.value : change.index.to;
+  });
+}
+
+/** Track names keyed by the newer song's track index, which is what the map rows use */
+function byTrack(
+  changes: readonly TrackChange[],
+  tracks: readonly (number | undefined)[],
+): string[] {
+  const names: string[] = [];
+  for (const [slot, change] of changes.entries()) {
+    const index = tracks[slot];
+    if (index === undefined) continue;
+    names[index] =
+      change.kind === "kept"
+        ? change.name.kind === "same"
+          ? change.name.value
+          : change.name.to
+        : change.track.name;
+  }
+  return names;
+}
+
+/** Which of the newer song's tracks differ, per pattern, for the map overlay */
+function changedByPattern(
+  matches: readonly PatternMatch[],
+  tracks: readonly (number | undefined)[],
+): Map<number, Set<number>> {
+  const changed = new Map<number, Set<number>>();
+
+  for (const match of matches) {
+    if (match.kind !== "modified") continue;
+    const indices = new Set<number>();
+    for (const slot of match.changedTracks) {
+      const index = tracks[slot];
+      if (index !== undefined) indices.add(index);
+    }
+    changed.set(match.to.index, indices);
+  }
+
+  return changed;
 }
 
 /** changedTracks holds aligned positions, and this is the list they are positions into */

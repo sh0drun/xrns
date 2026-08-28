@@ -1,10 +1,22 @@
+import type { SongMap } from "@xrns/core/analysis/song-map.js";
 import type { Song } from "@xrns/core/domain/song.js";
+import { renderMap } from "./render-map.js";
 import type { Track } from "@xrns/core/domain/track.js";
 
-export function renderSong(fileName: string, song: Song): Node {
+export function renderSong(fileName: string, song: Song, map: SongMap): Node {
   const view = document.createElement("div");
   view.className = "song";
-  view.append(header(fileName, song), tracks(song), sequence(song));
+  view.append(
+    header(fileName, song),
+    tracks(song),
+    renderMap({
+      map,
+      names: song.tracks.map((track) => track.name),
+      pairs: new Map(),
+      changed: new Map(),
+    }),
+    sequence(song),
+  );
   return view;
 }
 

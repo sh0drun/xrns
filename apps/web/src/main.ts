@@ -2,6 +2,7 @@ import { renderDiff } from "./render-diff.js";
 import { renderPattern } from "./render-pattern.js";
 import { renderSlots } from "./render-slots.js";
 import { renderSong } from "./render-song.js";
+import type { SongMap } from "@xrns/core/analysis/song-map.js";
 import type { SongDiff } from "@xrns/core/diff/song-diff.js";
 import type { ParseRequest, PatternRequest, Slot, WorkerMessage } from "./parse-worker.js";
 
@@ -12,6 +13,7 @@ const worker = new Worker(new URL("./parse-worker.ts", import.meta.url), { type:
 
 const names = new Map<Slot, string>();
 let songDiff: SongDiff | undefined;
+let songMap: SongMap | undefined;
 
 showSlots();
 
@@ -26,7 +28,7 @@ worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
   }
 
   if (result.kind === "song") {
-    if (names.size === 1) show(renderSong(result.name, result.song));
+    if (names.size === 1) show(renderSong(result.name, result.song, result.map));
     return;
   }
 
@@ -45,6 +47,7 @@ worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
   }
 
   songDiff = result.diff;
+  songMap = result.map;
   showDiff();
 };
 
@@ -121,8 +124,8 @@ function showSlots(): void {
 }
 
 function showDiff(): void {
-  if (songDiff === undefined) return;
-  show(renderDiff(songDiff));
+  if (songDiff === undefined || songMap === undefined) return;
+  show(renderDiff(songDiff, songMap));
 }
 
 /** Aligned track names, by slot, taken from the song diff the page already holds */
