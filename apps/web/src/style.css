@@ -374,6 +374,36 @@ body.dragging {
   Columns are fractions of the row, so a long song gets thinner cells rather than a
   sideways scrollbar
 */
+.map-controls {
+  display: flex;
+  gap: 2.5ch;
+  padding-bottom: 0.5rem;
+}
+
+.map-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75ch;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.map-toggle input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+
+/* The bar carries the comparison, the number carries the value */
+.map-total {
+  padding-left: 1ch;
+  background: linear-gradient(
+    to right,
+    var(--raised) calc(var(--share, 0) * 100%),
+    transparent calc(var(--share, 0) * 100%)
+  );
+  color: var(--text-dim);
+}
+
 .map-body {
   display: flex;
   align-items: stretch;

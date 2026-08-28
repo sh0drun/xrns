@@ -1,4 +1,4 @@
-import type { SongMap, SongMapSection } from "@xrns/core/analysis/song-map.js";
+import type { SongMap, SongMapRow, SongMapSection } from "@xrns/core/analysis/song-map.js";
 
 export interface MapView {
   readonly map: SongMap;
@@ -11,6 +11,10 @@ export interface MapView {
 }
 
 const NAME_COLUMN = "16ch";
+const TOTAL_COLUMN = "9ch";
+
+/** Kept across re-renders so a toggle survives dropping another file */
+const options = { totals: false, byEntry: false };
 
 /**
  * The arrangement: tracks down, playback order across, brightness by how much a track
@@ -36,7 +40,47 @@ export function renderMap(view: MapView): Node {
   body.className = "map-body";
   body.append(axisLabel("tracks"), stack);
 
-  element.append(body, key(view.changed.size > 0));
+  element.append(controls(view, element), body, key(view.changed.size > 0));
+  return element;
+}
+
+function controls(view: MapView, element: HTMLElement): Node {
+  const row = document.createElement("div");
+  row.className = "map-controls";
+
+  const redraw = (): void => {
+    element.replaceWith(renderMap(view));
+  };
+
+  row.append(
+    toggle("totals", options.totals, (on) => {
+      options.totals = on;
+      redraw();
+    }),
+    toggle("order by entry", options.byEntry, (on) => {
+      options.byEntry = on;
+      redraw();
+    }),
+  );
+
+  return row;
+}
+
+function toggle(label: string, checked: boolean, change: (on: boolean) => void): Node {
+  const element = document.createElement("label");
+  element.className = "map-toggle";
+
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = checked;
+  input.addEventListener("change", () => {
+    change(input.checked);
+  });
+
+  const text = document.createElement("span");
+  text.textContent = label;
+
+  element.append(input, text);
   return element;
 }
 
@@ -59,17 +103,49 @@ function cells(view: MapView, template: string, bands: readonly boolean[]): Node
   grid.className = "song-map";
   grid.style.gridTemplateColumns = template;
 
-  for (const row of view.map.rows) {
-    // Group, master and send tracks hold no pattern content, so they would be blank rows
-    if (row.cells.every((density) => density === 0)) continue;
-
+  for (const row of playing(view)) {
     grid.append(name(view.names[row.track] ?? String(row.track)));
     for (const [position, density] of row.cells.entries()) {
       grid.append(cell(view, row.track, position, density, bands[position] ?? false));
     }
+    if (options.totals) grid.append(total(share(row.cells, view.map.durations)));
   }
 
   return grid;
+}
+
+/** Group, master and send tracks hold no pattern content, so they would be blank rows */
+function playing(view: MapView): SongMapRow[] {
+  const rows = view.map.rows.filter((row) => row.cells.some((density) => density > 0));
+  if (!options.byEntry) return rows;
+
+  return [...rows].sort((a, b) => entry(a) - entry(b));
+}
+
+function entry(row: SongMapRow): number {
+  const first = row.cells.findIndex((density) => density > 0);
+  return first === -1 ? Number.MAX_SAFE_INTEGER : first;
+}
+
+/** How much of the song's running time this track plays in at all */
+function share(cells: readonly number[], durations: readonly number[]): number {
+  let playing = 0;
+  let total = 0;
+
+  for (const [position, seconds] of durations.entries()) {
+    total += seconds;
+    if ((cells[position] ?? 0) > 0) playing += seconds;
+  }
+
+  return total === 0 ? 0 : playing / total;
+}
+
+function total(fraction: number): Node {
+  const element = document.createElement("span");
+  element.className = "map-total";
+  element.style.setProperty("--share", fraction.toFixed(3));
+  element.textContent = `${String(Math.round(fraction * 100))}%`;
+  return element;
 }
 
 /** Every other section shaded, so the parts of the song show through the map itself */
@@ -125,7 +201,9 @@ function axisLabel(text: string): Node {
 /** A position that lasts twice as long is twice as wide, with a floor so none vanish */
 function columns(lengths: readonly number[]): string {
   const widths = lengths.map((lines) => `${String(Math.max(1, lines))}fr`);
-  return [NAME_COLUMN, ...widths].join(" ");
+  const all = [NAME_COLUMN, ...widths];
+  if (options.totals) all.push(TOTAL_COLUMN);
+  return all.join(" ");
 }
 
 function gutter(): Node {
