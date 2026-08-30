@@ -64,7 +64,7 @@ document.addEventListener("drop", (event) => {
   event.preventDefault();
   document.body.classList.remove("dragging");
 
-  for (const file of [...(event.dataTransfer?.files ?? [])]) load(nextSlot(), file);
+  for (const file of [...(event.dataTransfer?.files ?? [])]) void load(nextSlot(), file);
 });
 
 // Delegated from #app, which outlives every view swap
@@ -90,11 +90,36 @@ function nextSlot(): Slot {
   return names.has("before") ? "after" : "before";
 }
 
-function load(slot: Slot, file: File): void {
+async function load(slot: Slot, file: File): Promise<void> {
   names.set(slot, file.name);
   showSlots();
   show(message(`reading ${file.name}`));
-  void send(slot, file);
+  await send(slot, file);
+}
+
+/**
+ * Both slots at once, in order
+ *
+ * Sequentially because reading the bytes is async, and the worker builds the diff off
+ * whichever file it sees second
+ */
+async function loadExample(): Promise<void> {
+  const before = await exampleFile("example-v1.xrns");
+  const after = await exampleFile("example-v2.xrns");
+
+  if (before === undefined || after === undefined) {
+    show(message("the example could not be loaded"));
+    return;
+  }
+
+  await load("before", before);
+  await load("after", after);
+}
+
+async function exampleFile(name: string): Promise<File | undefined> {
+  const response = await fetch(`/example/${name}`);
+  if (!response.ok) return undefined;
+  return new File([await response.blob()], name);
 }
 
 async function send(slot: Slot, file: File): Promise<void> {
@@ -120,7 +145,17 @@ function openPattern(target: EventTarget | null): void {
 }
 
 function showSlots(): void {
-  files.replaceChildren(renderSlots(names, load));
+  files.replaceChildren(
+    renderSlots(
+      names,
+      (slot, file) => {
+        void load(slot, file);
+      },
+      () => {
+        void loadExample();
+      },
+    ),
+  );
 }
 
 function showDiff(): void {

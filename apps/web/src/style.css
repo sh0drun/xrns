@@ -71,10 +71,33 @@ body.dragging {
   padding-block: 1.5rem 2rem;
 }
 
+.file-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  gap: 0.5rem;
+}
+
 .file-slots {
   display: flex;
   flex-wrap: wrap;
   gap: 1ch;
+}
+
+.example-link {
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--rule);
+  background: none;
+  font: inherit;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.example-link:hover,
+.example-link:focus-visible {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
 }
 
 /* A whole slot is the target, so the click area matches what it looks like */

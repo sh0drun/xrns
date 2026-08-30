@@ -11,11 +11,27 @@ const SLOTS: readonly Slot[] = ["before", "after"];
 export function renderSlots(
   names: ReadonlyMap<Slot, string>,
   pick: (slot: Slot, file: File) => void,
+  example: () => void,
 ): Node {
+  const bar = document.createElement("div");
+  bar.className = "file-bar";
+
   const row = document.createElement("div");
   row.className = "file-slots";
   for (const slot of SLOTS) row.append(renderSlot(slot, names.get(slot), pick));
-  return row;
+
+  bar.append(row, exampleButton(example));
+  return bar;
+}
+
+/** Two versions of one song, so the tool can be understood without owning a tracker */
+function exampleButton(example: () => void): Node {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "example-link";
+  button.textContent = "or load an example";
+  button.addEventListener("click", example);
+  return button;
 }
 
 function renderSlot(
