@@ -2,6 +2,7 @@ import type { Song } from "../domain/song.js";
 import { alignSequence } from "./align-sequence.js";
 import { alignTracks } from "./align-tracks.js";
 import type { AlignedTrack } from "./align-tracks.js";
+import { diffInstruments } from "./diff-instruments.js";
 import { matchPatterns } from "./match-patterns.js";
 import { change } from "./song-diff.js";
 import type { MetaDiff, SongDiff, TrackChange } from "./song-diff.js";
@@ -21,6 +22,7 @@ export function diffSongs(
   return {
     meta: meta(from, to),
     tracks: tracks(from, to, alignment),
+    instruments: diffInstruments(from, to),
     sequence: alignSequence(from.sequence, to.sequence),
     patterns: matchPatterns(from, to, alignment),
   };

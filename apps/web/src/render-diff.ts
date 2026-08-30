@@ -28,7 +28,7 @@ export function renderDiff(diff: SongDiff, map: SongMap, instruments: Instrument
         changed: changedByPattern(diff.patterns, tracks),
       }),
     ),
-    renderInstruments(instruments),
+    renderInstruments(instruments, diff.instruments),
     section("sequence", sequenceRows(diff.sequence, pairs)),
     section("patterns", patternList(diff.patterns, trackNames(diff.tracks), pairs)),
   );

@@ -1,21 +1,125 @@
+import type {
+  InstrumentMatch,
+  SampleField,
+  SampleFieldChange,
+  SampleMatch,
+} from "@xrns/core/diff/diff-instruments.js";
 import type { InstrumentRow, Instruments } from "./parse-worker.js";
 
+const LABELS: Record<SampleField, string> = {
+  name: "name",
+  volume: "volume",
+  panning: "panning",
+  transpose: "transpose",
+  finetune: "finetune",
+  loopMode: "loop",
+  loopStart: "loop start",
+  loopEnd: "loop end",
+  baseNote: "base note",
+  noteStart: "from key",
+  noteEnd: "to key",
+  velocityStart: "from velocity",
+  velocityEnd: "to velocity",
+};
+
 /**
- * Track against instrument
+ * Track against instrument, and what changed about the instruments themselves
  *
  * Nineteen of Tension's twenty tracks play exactly one instrument, so the mapping is
  * what carries the information and a share only prints where a track splits. The note
  * count is the second reading: it says which tracks the song is actually built on
+ *
+ * `changes` is absent for a single song, where there is nothing to compare against
  */
-export function renderInstruments(instruments: Instruments): Node {
+export function renderInstruments(
+  instruments: Instruments,
+  changes?: readonly InstrumentMatch[],
+): Node {
   const element = document.createElement("section");
   element.className = "instruments";
 
   const heading = document.createElement("h2");
   heading.textContent = "instruments";
-  element.append(heading, body(instruments));
+  element.append(heading);
+
+  if (changes !== undefined) element.append(changeList(changes));
+  element.append(body(instruments));
 
   return element;
+}
+
+function changeList(changes: readonly InstrumentMatch[]): Node {
+  const list = document.createElement("ol");
+  list.className = "changes";
+
+  for (const match of changes) {
+    if (match.kind !== "identical") list.append(changeRow(match));
+  }
+  if (list.childElementCount === 0) list.append(quiet("no instrument changed"));
+
+  return list;
+}
+
+function changeRow(match: InstrumentMatch): Node {
+  const item = document.createElement("li");
+
+  if (match.kind === "added" || match.kind === "removed") {
+    const mark = match.kind === "added" ? "+" : "-";
+    item.className = `row ${match.kind}`;
+    item.textContent = `${mark} ${slot(match.index)} ${named(match.instrument.name, match.instrument.samples[0]?.name)}`;
+    return item;
+  }
+
+  if (match.kind === "identical") {
+    item.className = "row quiet";
+    return item;
+  }
+
+  item.className = "row changed";
+  const name =
+    match.name.kind === "changed" ? `${match.name.from} → ${match.name.to}` : match.name.value;
+  item.textContent = `~ ${slot(match.index)} ${name}`;
+
+  for (const one of match.samples) {
+    if (one.kind !== "identical") item.append(sampleDetail(one));
+  }
+
+  return item;
+}
+
+function sampleDetail(match: SampleMatch): Node {
+  const element = document.createElement("div");
+  element.className = "row-detail";
+
+  if (match.kind === "added") element.textContent = `+ ${match.sample.name}`;
+  else if (match.kind === "removed") element.textContent = `- ${match.sample.name}`;
+  else if (match.kind === "modified") {
+    element.textContent = `${match.name}  ${match.fields.map(field).join(", ")}`;
+  }
+
+  return element;
+}
+
+function field(one: SampleFieldChange): string {
+  return `${LABELS[one.field]} ${String(one.from)} → ${String(one.to)}`;
+}
+
+/** Renoise numbers instruments in hex, so the slot reads the way it does in the tracker */
+function slot(index: number): string {
+  return index.toString(16).toUpperCase().padStart(2, "0");
+}
+
+/** An instrument can carry samples and no name of its own, so the first sample stands in */
+function named(name: string, fallback: string | undefined): string {
+  if (name !== "") return name;
+  return fallback ?? "";
+}
+
+function quiet(text: string): Node {
+  const item = document.createElement("li");
+  item.className = "row quiet";
+  item.textContent = text;
+  return item;
 }
 
 function body(instruments: Instruments): Node {

@@ -1,5 +1,6 @@
 import type { SequenceEntry } from "../domain/sequence.js";
 import type { Track, TrackType } from "../domain/track.js";
+import type { InstrumentMatch } from "./diff-instruments.js";
 
 /**
  * Changes carry their values, so a diff reads on its own without either song
@@ -115,6 +116,7 @@ export type PatternMatch = PatternAdded | PatternRemoved | PatternIdentical | Pa
 export interface SongDiff {
   readonly meta: MetaDiff;
   readonly tracks: readonly TrackChange[];
+  readonly instruments: readonly InstrumentMatch[];
   readonly sequence: readonly SequenceChange[];
   readonly patterns: readonly PatternMatch[];
 }
