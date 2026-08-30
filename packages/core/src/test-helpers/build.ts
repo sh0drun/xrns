@@ -42,6 +42,7 @@ export function song(tracks: readonly Track[], patterns: readonly Pattern[] = []
     linesPerBeat: 4,
     ticksPerLine: 12,
     tracks,
+    instruments: [],
     patterns,
     sequence: [],
   };

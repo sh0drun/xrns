@@ -1,4 +1,5 @@
 import { MalformedSongError, UnsupportedVersionError } from "../domain/errors.js";
+import type { Instrument, LoopMode, Sample, SampleMapping } from "../domain/instrument.js";
 import type { EffectColumn, Line, NoteColumn } from "../domain/line.js";
 import { parseNote } from "../domain/note.js";
 import type { Pattern, PatternTrack } from "../domain/pattern.js";
@@ -48,6 +49,12 @@ const PATTERN_TRACK_TYPES = new Map<string, TrackType>([
 /** -1 is how the file spells "this track is not an alias". */
 const NOT_ALIASED = -1;
 
+const LOOP_MODES = new Map<string, LoopMode>([
+  ["Off", "off"],
+  ["Forward", "forward"],
+  ["PingPong", "pingPong"],
+]);
+
 export function readSong(document: XmlNodes): Song {
   const root = findElement(document, "RenoiseSong");
   if (root === undefined) {
@@ -67,6 +74,7 @@ export function readSong(document: XmlNodes): Song {
     linesPerBeat: numberIn(global, "LinesPerBeat", 4),
     ticksPerLine: numberIn(global, "TicksPerLine", 12),
     tracks,
+    instruments: readInstruments(childrenIn(song, "Instruments")),
     patterns: readPatterns(childrenIn(childrenIn(song, "PatternPool"), "Patterns"), tracks),
     sequence: readSequence(childrenIn(childrenIn(song, "PatternSequence"), "SequenceEntries")),
   };
@@ -101,6 +109,61 @@ function readTracks(nodes: XmlNodes): Track[] {
       groupNestingLevel: numberIn(children, "GroupNestingLevel", 0),
     };
   });
+}
+
+/**
+ * Every slot in the instrument list, including the empty ones
+ *
+ * Indices are positions in that list and pattern notes address them by number, so a
+ * blank slot has to keep its place rather than be filtered out here
+ */
+function readInstruments(nodes: XmlNodes): Instrument[] {
+  return elementsOf(nodes, "Instrument").map((node, index) => {
+    const children = contentOf(node);
+    const generator = childrenIn(children, "SampleGenerator");
+    return {
+      index,
+      name: textIn(children, "Name") ?? "",
+      activeGenerator: textIn(children, "ActiveGeneratorTab") ?? "",
+      samples: readSamples(childrenIn(generator, "Samples")),
+    };
+  });
+}
+
+function readSamples(nodes: XmlNodes): Sample[] {
+  return elementsOf(nodes, "Sample").map((node, index) => {
+    const children = contentOf(node);
+    return {
+      index,
+      name: textIn(children, "Name") ?? "",
+      volume: numberIn(children, "Volume", 1),
+      panning: numberIn(children, "Panning", 0.5),
+      transpose: numberIn(children, "Transpose", 0),
+      finetune: numberIn(children, "Finetune", 0),
+      loopMode: readLoopMode(children),
+      loopStart: numberIn(children, "LoopStart", 0),
+      loopEnd: numberIn(children, "LoopEnd", 0),
+      mapping: readMapping(childrenIn(children, "Mapping")),
+    };
+  });
+}
+
+/** An absent element means no loop, which is not the same as a mode this reader has not seen */
+function readLoopMode(nodes: XmlNodes): LoopMode {
+  const raw = textIn(nodes, "LoopMode");
+  if (raw === undefined) return "off";
+  return LOOP_MODES.get(raw) ?? "other";
+}
+
+/** Defaults are Renoise's own, taken from the 618 samples in its demo library */
+function readMapping(nodes: XmlNodes): SampleMapping {
+  return {
+    baseNote: numberIn(nodes, "BaseNote", 48),
+    noteStart: numberIn(nodes, "NoteStart", 0),
+    noteEnd: numberIn(nodes, "NoteEnd", 119),
+    velocityStart: numberIn(nodes, "VelocityStart", 0),
+    velocityEnd: numberIn(nodes, "VelocityEnd", 127),
+  };
 }
 
 function readPatterns(nodes: XmlNodes, tracks: readonly Track[]): Pattern[] {

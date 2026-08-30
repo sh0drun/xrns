@@ -99,6 +99,53 @@ describe("reading song.xrns", () => {
   });
 });
 
+describe("reading instruments", () => {
+  it("keeps the empty slots in place, since notes address the list by number", async () => {
+    const song = await loadFixtureSong("song");
+
+    expect(song.instruments).toHaveLength(10);
+    expect(song.instruments.map((instrument) => instrument.name)).toEqual([
+      "Break - Block Bar",
+      ...Array.from({ length: 9 }, () => ""),
+    ]);
+    expect(song.instruments.map((instrument) => instrument.samples.length)).toEqual([
+      52, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ]);
+  });
+
+  it("takes an instrument's own name rather than the first one below it", async () => {
+    const song = await loadFixtureSong("kits");
+
+    // An empty instrument writes <Name /> and carries eight macro names underneath it,
+    // so a search not scoped to direct children reads every empty slot as "Macro 1"
+    expect(song.instruments.slice(6).map((instrument) => instrument.name)).toEqual([
+      "",
+      "",
+      "",
+      "",
+    ]);
+  });
+
+  it("reads a sample's tuning, loop and key mapping", async () => {
+    const song = await loadFixtureSong("kits");
+    const sample = song.instruments[0]?.samples[0];
+
+    expect(sample?.name).toBe("Kick Body");
+    expect(sample?.transpose).toBe(2);
+    expect(sample?.finetune).toBe(-14);
+    expect(sample?.loopMode).toBe("forward");
+    expect(sample?.loopStart).toBe(3172);
+    expect(sample?.loopEnd).toBe(3924);
+    expect(sample?.mapping).toEqual({
+      baseNote: 48,
+      noteStart: 48,
+      noteEnd: 48,
+      velocityStart: 0,
+      velocityEnd: 127,
+    });
+  });
+});
+
 /**
  * Invariants that hold for any readable song. The committed fixtures cover these in
  * CI; the Renoise library adds group tracks, aliased pattern tracks and four older
@@ -159,6 +206,18 @@ describe("reader invariants", () => {
     expect([...new Set(songs.map((song) => song.docVersion))].sort((a, b) => a - b)).toEqual([
       54, 63, 64, 66, 67,
     ]);
+  });
+
+  it.skipIf(libraryPaths.length === 0)("names every loop mode the library uses", async () => {
+    const songs = await Promise.all(libraryPaths.map(loadSong));
+    const samples = songs.flatMap((song) =>
+      song.instruments.flatMap((instrument) => instrument.samples),
+    );
+
+    // 618 samples across the library, and Off, Forward and PingPong cover all of them.
+    // A mode reading as "other" means Renoise has one this reader has never seen
+    expect(samples.length).toBeGreaterThan(600);
+    expect(samples.filter((sample) => sample.loopMode === "other")).toEqual([]);
   });
 
   it.skipIf(libraryPaths.length === 0)(
