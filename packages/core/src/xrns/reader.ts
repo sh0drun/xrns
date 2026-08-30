@@ -5,7 +5,7 @@ import { parseNote } from "../domain/note.js";
 import type { Pattern, PatternTrack } from "../domain/pattern.js";
 import type { SequenceEntry } from "../domain/sequence.js";
 import type { Song } from "../domain/song.js";
-import type { Track, TrackType } from "../domain/track.js";
+import type { Track, TrackColor, TrackType } from "../domain/track.js";
 import {
   attributeOf,
   childrenIn,
@@ -100,15 +100,33 @@ function readTracks(nodes: XmlNodes): Track[] {
       throw new MalformedSongError(`Unknown track element <${tag}> at track ${String(index)}`);
     }
     const children = contentOf(node);
+    const color = readColor(children);
     return {
       index,
       type,
       name: textIn(children, "Name") ?? "",
+      ...(color !== undefined && { color }),
       visibleNoteColumns: numberIn(children, "NumberOfVisibleNoteColumns", 0),
       visibleEffectColumns: numberIn(children, "NumberOfVisibleEffectColumns", 0),
       groupNestingLevel: numberIn(children, "GroupNestingLevel", 0),
     };
   });
+}
+
+/** A malformed colour reads as no colour, since a wrong one would mislabel a track */
+function readColor(nodes: XmlNodes): TrackColor | undefined {
+  const raw = textIn(nodes, "Color");
+  if (raw === undefined) return undefined;
+
+  const [red, green, blue, ...rest] = raw.split(",").map((part) => Number(part.trim()));
+  if (red === undefined || green === undefined || blue === undefined || rest.length > 0) {
+    return undefined;
+  }
+  if (![red, green, blue].every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) {
+    return undefined;
+  }
+
+  return [red, green, blue];
 }
 
 /**

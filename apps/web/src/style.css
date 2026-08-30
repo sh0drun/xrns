@@ -218,11 +218,67 @@ body.dragging {
   color: var(--text-lit);
 }
 
-.diff h2 {
+.diff h2,
+.song h2 {
   margin: 1.5rem 0 0.25rem;
   font-size: 13px;
   font-weight: 400;
   color: var(--text-dim);
+}
+
+.instrument-rows,
+.instrument-catalog {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.instrument-row {
+  display: grid;
+  grid-template-columns: 16ch 1fr 9ch;
+  gap: 1ch;
+}
+
+.instrument-track {
+  overflow: hidden;
+  color: var(--text-dim);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-chip {
+  display: inline-block;
+  width: 1ch;
+  height: 0.7rem;
+  margin-right: 1ch;
+  background: var(--color);
+  vertical-align: middle;
+}
+
+.instrument-played {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 2ch;
+  color: var(--text-lit);
+}
+
+.instrument-note {
+  color: var(--text-dim);
+}
+
+/*
+  The bar is a gradient stop rather than an element, the same way the map's totals are
+  It grows leftward from the count so the two stay adjacent on a quiet track
+*/
+.instrument-weight {
+  padding: 0 0.5ch;
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--text) 25%, var(--panel)) calc(var(--share) * 100%),
+    transparent 0
+  );
+  color: var(--text-dim);
+  text-align: right;
 }
 
 .changes {

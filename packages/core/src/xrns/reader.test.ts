@@ -53,6 +53,8 @@ describe("reading song.xrns", () => {
       "S01",
     ]);
     expect(song.tracks[0]?.visibleNoteColumns).toBe(1);
+    expect(song.tracks[0]?.color).toEqual([166, 41, 41]);
+    expect(song.tracks[8]?.color).toEqual([220, 220, 220]);
   });
 
   it("reads a kick pattern as the notes a tracker would show", async () => {
@@ -206,6 +208,15 @@ describe("reader invariants", () => {
     expect([...new Set(songs.map((song) => song.docVersion))].sort((a, b) => a - b)).toEqual([
       54, 63, 64, 66, 67,
     ]);
+  });
+
+  it.skipIf(libraryPaths.length === 0)("gives every track in the library a colour", async () => {
+    const songs = await Promise.all(libraryPaths.map(loadSong));
+    const tracks = songs.flatMap((song) => song.tracks);
+
+    // Present on all 328 tracks across five document versions, so a track without one
+    // means the reader stopped finding an element rather than the file omitting it
+    expect(tracks.filter((track) => track.color === undefined)).toEqual([]);
   });
 
   it.skipIf(libraryPaths.length === 0)("names every loop mode the library uses", async () => {

@@ -1,0 +1,121 @@
+import type { InstrumentRow, Instruments } from "./parse-worker.js";
+
+/**
+ * Track against instrument
+ *
+ * Nineteen of Tension's twenty tracks play exactly one instrument, so the mapping is
+ * what carries the information and a share only prints where a track splits. The note
+ * count is the second reading: it says which tracks the song is actually built on
+ */
+export function renderInstruments(instruments: Instruments): Node {
+  const element = document.createElement("section");
+  element.className = "instruments";
+
+  const heading = document.createElement("h2");
+  heading.textContent = "instruments";
+  element.append(heading, body(instruments));
+
+  return element;
+}
+
+function body(instruments: Instruments): Node {
+  const named = instruments.rows.some((row) => row.instruments.length > 0);
+  return named ? rows(instruments.rows) : catalog(instruments.catalog);
+}
+
+function rows(all: readonly InstrumentRow[]): Node {
+  const list = document.createElement("ol");
+  list.className = "instrument-rows";
+
+  const busiest = Math.max(1, ...all.map((row) => row.notes));
+  for (const row of all) list.append(renderRow(row, busiest));
+
+  return list;
+}
+
+/**
+ * The fallback for a song whose notes never name an instrument
+ *
+ * Every track's row would read "unknown", which is a table saying nothing, so the
+ * instrument list itself is the better answer
+ */
+function catalog(names: readonly string[]): Node {
+  const list = document.createElement("ol");
+  list.className = "instrument-catalog";
+
+  for (const name of names) {
+    const item = document.createElement("li");
+    item.textContent = name;
+    list.append(item);
+  }
+
+  return list;
+}
+
+function renderRow(row: InstrumentRow, busiest: number): Node {
+  const item = document.createElement("li");
+  item.className = "instrument-row";
+
+  const track = document.createElement("span");
+  track.className = "instrument-track";
+  track.title = row.track;
+  if (row.color !== undefined) track.append(chip(row.color));
+  track.append(row.track);
+
+  item.append(track, played(row), weight(row.notes, busiest));
+  return item;
+}
+
+/**
+ * The colour the composer sees on this track in Renoise
+ *
+ * Kept to a character so it reads as recognition rather than as meaning: density is
+ * already luminance and the accent already means changed
+ */
+function chip(color: string): Node {
+  const element = document.createElement("span");
+  element.className = "track-chip";
+  element.style.setProperty("--color", color);
+  return element;
+}
+
+function played(row: InstrumentRow): Node {
+  const element = document.createElement("span");
+  element.className = "instrument-played";
+
+  for (const one of row.instruments) {
+    element.append(name(one.name, row.instruments.length > 1 ? one.notes / row.notes : undefined));
+  }
+  if (row.unknown > 0) element.append(dim(`${String(row.unknown)} unattributed`));
+  if (row.instruments.length === 0 && row.unknown === 0) element.append(dim("unknown"));
+
+  return element;
+}
+
+function name(text: string, share: number | undefined): Node {
+  const element = document.createElement("span");
+  element.className = "instrument-name";
+  element.textContent = text;
+
+  if (share !== undefined) {
+    element.append(" ", dim(`${String(Math.round(share * 100))}%`));
+  }
+
+  return element;
+}
+
+/** The bar is a gradient stop rather than an element, the same way the map's totals are */
+function weight(notes: number, busiest: number): Node {
+  const element = document.createElement("span");
+  element.className = "instrument-weight";
+  element.style.setProperty("--share", (notes / busiest).toFixed(3));
+  element.textContent = String(notes);
+  return element;
+}
+
+function dim(text: string): Node {
+  const element = document.createElement("span");
+  element.className = "instrument-note";
+  element.textContent = text;
+  return element;
+}

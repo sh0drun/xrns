@@ -1,3 +1,4 @@
+import { instrumentUse } from "@xrns/core/analysis/instrument-use.js";
 import { songMap } from "@xrns/core/analysis/song-map.js";
 import { alignTracks } from "@xrns/core/diff/align-tracks.js";
 import { diffPattern } from "@xrns/core/diff/diff-pattern.js";
@@ -31,6 +32,26 @@ export interface PatternRequest {
 
 export type WorkerRequest = ParseRequest | PatternRequest;
 
+/**
+ * One track and what it plays, already named
+ *
+ * Resolved here so the page never needs the instrument list to read a track's row
+ */
+export interface InstrumentRow {
+  readonly track: string;
+  /** The track's own colour from the file, already CSS, absent where the song gives none */
+  readonly color?: string;
+  readonly notes: number;
+  readonly unknown: number;
+  readonly instruments: readonly { readonly name: string; readonly notes: number }[];
+}
+
+export interface Instruments {
+  readonly rows: readonly InstrumentRow[];
+  /** Named instruments, for a song whose notes never say which one they play */
+  readonly catalog: readonly string[];
+}
+
 export type WorkerMessage =
   | {
       readonly kind: "song";
@@ -38,8 +59,14 @@ export type WorkerMessage =
       readonly name: string;
       readonly song: Song;
       readonly map: SongMap;
+      readonly instruments: Instruments;
     }
-  | { readonly kind: "diff"; readonly diff: SongDiff; readonly map: SongMap }
+  | {
+      readonly kind: "diff";
+      readonly diff: SongDiff;
+      readonly map: SongMap;
+      readonly instruments: Instruments;
+    }
   | {
       readonly kind: "pattern";
       readonly from: Pattern;
@@ -95,7 +122,14 @@ function parse(request: ParseRequest): void {
   }
 
   loaded.set(slot, song);
-  scope.postMessage({ kind: "song", slot, name, song, map: songMap(song) });
+  scope.postMessage({
+    kind: "song",
+    slot,
+    name,
+    song,
+    map: songMap(song),
+    instruments: instruments(song),
+  });
 
   const before = loaded.get("before");
   const after = loaded.get("after");
@@ -103,7 +137,35 @@ function parse(request: ParseRequest): void {
 
   alignment = alignTracks(before, after);
   const diff = diffSongs(before, after, alignment);
-  scope.postMessage({ kind: "diff", diff, map: songMap(after) });
+  scope.postMessage({ kind: "diff", diff, map: songMap(after), instruments: instruments(after) });
+}
+
+/** Tracks that play nothing are dropped: a group or send track holds no notes to attribute */
+function instruments(song: Song): Instruments {
+  const rows = instrumentUse(song)
+    .filter((use) => use.notes > 0 || use.unknown > 0)
+    .map((use) => {
+      const color = song.tracks[use.track]?.color;
+      return {
+        track: song.tracks[use.track]?.name ?? "",
+        ...(color !== undefined && { color: `rgb(${color.join(" ")})` }),
+        notes: use.notes,
+        unknown: use.unknown,
+        instruments: use.instruments.map((one) => ({
+          name: instrumentName(song, one.instrument),
+          notes: one.notes,
+        })),
+      };
+    });
+
+  const catalog = song.instruments.filter((one) => one.name !== "").map((one) => one.name);
+  return { rows, catalog };
+}
+
+/** Renoise numbers instruments in hex and shows that number wherever a name is empty */
+function instrumentName(song: Song, index: number): string {
+  const name = song.instruments[index]?.name ?? "";
+  return name === "" ? index.toString(16).toUpperCase().padStart(2, "0") : name;
 }
 
 function openPattern(request: PatternRequest): void {

@@ -8,10 +8,20 @@
  */
 export type TrackType = "sequencer" | "group" | "master" | "send";
 
+/** Red, green and blue from 0 to 255, which is how the file spells a track's colour */
+export type TrackColor = readonly [number, number, number];
+
 export interface Track {
   readonly index: number;
   readonly type: TrackType;
   readonly name: string;
+  /**
+   * The colour Renoise paints this track, absent where the file gives none
+   *
+   * Every track in the demo library and the fixtures has one, across five document
+   * versions, but it is the composer's own and worth showing rather than assuming
+   */
+  readonly color?: TrackColor;
   /**
    * Renoise only displays and plays columns below these counts. Writing above them
    * produces data the composer cannot see, which is worse than refusing.

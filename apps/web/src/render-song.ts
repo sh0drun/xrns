@@ -1,9 +1,16 @@
 import type { SongMap } from "@xrns/core/analysis/song-map.js";
 import type { Song } from "@xrns/core/domain/song.js";
+import { renderInstruments } from "./render-instruments.js";
 import { renderMap } from "./render-map.js";
+import type { Instruments } from "./parse-worker.js";
 import type { Track } from "@xrns/core/domain/track.js";
 
-export function renderSong(fileName: string, song: Song, map: SongMap): Node {
+export function renderSong(
+  fileName: string,
+  song: Song,
+  map: SongMap,
+  instruments: Instruments,
+): Node {
   const view = document.createElement("div");
   view.className = "song";
   view.append(
@@ -15,6 +22,7 @@ export function renderSong(fileName: string, song: Song, map: SongMap): Node {
       pairs: new Map(),
       changed: new Map(),
     }),
+    renderInstruments(instruments),
     sequence(song),
   );
   return view;

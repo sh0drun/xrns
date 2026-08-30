@@ -4,7 +4,13 @@ import { renderSlots } from "./render-slots.js";
 import { renderSong } from "./render-song.js";
 import type { SongMap } from "@xrns/core/analysis/song-map.js";
 import type { SongDiff } from "@xrns/core/diff/song-diff.js";
-import type { ParseRequest, PatternRequest, Slot, WorkerMessage } from "./parse-worker.js";
+import type {
+  Instruments,
+  ParseRequest,
+  PatternRequest,
+  Slot,
+  WorkerMessage,
+} from "./parse-worker.js";
 
 const files = required("#files");
 const app = required("#app");
@@ -14,6 +20,7 @@ const worker = new Worker(new URL("./parse-worker.ts", import.meta.url), { type:
 const names = new Map<Slot, string>();
 let songDiff: SongDiff | undefined;
 let songMap: SongMap | undefined;
+let songInstruments: Instruments | undefined;
 
 showSlots();
 
@@ -28,7 +35,9 @@ worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
   }
 
   if (result.kind === "song") {
-    if (names.size === 1) show(renderSong(result.name, result.song, result.map));
+    if (names.size === 1) {
+      show(renderSong(result.name, result.song, result.map, result.instruments));
+    }
     return;
   }
 
@@ -48,6 +57,7 @@ worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
 
   songDiff = result.diff;
   songMap = result.map;
+  songInstruments = result.instruments;
   showDiff();
 };
 
@@ -159,8 +169,8 @@ function showSlots(): void {
 }
 
 function showDiff(): void {
-  if (songDiff === undefined || songMap === undefined) return;
-  show(renderDiff(songDiff, songMap));
+  if (songDiff === undefined || songMap === undefined || songInstruments === undefined) return;
+  show(renderDiff(songDiff, songMap, songInstruments));
 }
 
 /** Aligned track names, by slot, taken from the song diff the page already holds */

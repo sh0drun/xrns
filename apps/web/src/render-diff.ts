@@ -7,9 +7,11 @@ import type {
 } from "@xrns/core/diff/song-diff.js";
 import type { SequenceEntry } from "@xrns/core/domain/sequence.js";
 import type { SongMap } from "@xrns/core/analysis/song-map.js";
+import { renderInstruments } from "./render-instruments.js";
 import { renderMap } from "./render-map.js";
+import type { Instruments } from "./parse-worker.js";
 
-export function renderDiff(diff: SongDiff, map: SongMap): Node {
+export function renderDiff(diff: SongDiff, map: SongMap, instruments: Instruments): Node {
   const view = document.createElement("div");
   view.className = "diff";
   const pairs = pairPatterns(diff.patterns);
@@ -26,6 +28,7 @@ export function renderDiff(diff: SongDiff, map: SongMap): Node {
         changed: changedByPattern(diff.patterns, tracks),
       }),
     ),
+    renderInstruments(instruments),
     section("sequence", sequenceRows(diff.sequence, pairs)),
     section("patterns", patternList(diff.patterns, trackNames(diff.tracks), pairs)),
   );
