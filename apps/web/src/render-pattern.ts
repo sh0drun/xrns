@@ -9,8 +9,11 @@ import type {
 } from "@xrns/core/diff/diff-pattern.js";
 import type { EffectColumn, NoteColumn } from "@xrns/core/domain/line.js";
 import type { Pattern, PatternTrack } from "@xrns/core/domain/pattern.js";
+import type { PatternSide } from "./parse-worker.js";
 
 export interface PatternView {
+  /** A pattern present in one song only has nothing on its other side to compare against */
+  readonly side: PatternSide;
   readonly from: Pattern;
   readonly to: Pattern;
   readonly diff: PatternDiff;
@@ -37,7 +40,9 @@ export function renderPattern(view: PatternView): Node {
   element.append(patternHeading(view));
 
   if (view.diff.tracks.length === 0) {
-    element.append(hint("nothing differs inside this pattern"));
+    const empty =
+      view.side === "both" ? "nothing differs inside this pattern" : "this pattern is empty";
+    element.append(hint(empty));
     return element;
   }
 
@@ -46,13 +51,18 @@ export function renderPattern(view: PatternView): Node {
   return element;
 }
 
+/** A removed pattern is described from the older song, since the newer one has no such pattern */
 function patternHeading(view: PatternView): Node {
   const heading = document.createElement("h2");
+  const shown = view.side === "removed" ? view.from : view.to;
+
+  const state = view.side === "both" ? "" : `, ${view.side}`;
   const beats =
-    view.linesPerBeat.from === view.linesPerBeat.to
+    view.side !== "both" || view.linesPerBeat.from === view.linesPerBeat.to
       ? ""
       : `, beat grid drawn at ${String(view.linesPerBeat.to)} lines, was ${String(view.linesPerBeat.from)}`;
-  heading.textContent = `pattern ${String(view.to.index)}, ${String(view.to.numberOfLines)} lines${beats}`;
+
+  heading.textContent = `pattern ${String(shown.index)}${state}, ${String(shown.numberOfLines)} lines${beats}`;
   return heading;
 }
 
@@ -69,21 +79,26 @@ function renderTrack(view: PatternView, track: TrackContentDiff): Node {
     return section;
   }
 
+  // A removed pattern is measured by the older song: the newer one has no such pattern,
+  // so its length and beat grid are both zero
+  const length = view.side === "removed" ? view.from.numberOfLines : view.to.numberOfLines;
+  const beat = view.side === "removed" ? view.linesPerBeat.from : view.linesPerBeat.to;
+
   const older = trackAt(view.from, view.alignment[track.slot]?.from);
   const newer = trackAt(view.to, view.alignment[track.slot]?.to);
-  const shape = shapeOf(older, newer, view.to.numberOfLines);
+  const shape = shapeOf(older, newer, length);
   const changed = changedLines(track);
 
   const grid = document.createElement("div");
   grid.className = "lines";
 
-  for (const run of runs(view.to.numberOfLines, changed)) {
+  for (const run of runs(length, changed)) {
     if (run.hidden) {
       grid.append(collapsed(run.length));
       continue;
     }
     for (let index = run.start; index < run.start + run.length; index += 1) {
-      grid.append(renderLine(index, older, newer, shape, track, view.linesPerBeat.to));
+      grid.append(renderLine(index, older, newer, shape, track, beat));
     }
   }
 

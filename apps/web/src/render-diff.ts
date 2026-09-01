@@ -7,7 +7,8 @@ import type {
 } from "@xrns/core/diff/song-diff.js";
 import type { SequenceEntry } from "@xrns/core/domain/sequence.js";
 import type { SongMap } from "@xrns/core/analysis/song-map.js";
-import { renderInstruments } from "./render-instruments.js";
+import { group } from "./layout.js";
+import { renderInstrumentChanges, renderTrackInstruments } from "./render-instruments.js";
 import { renderMap } from "./render-map.js";
 import type { Instruments } from "./parse-worker.js";
 
@@ -16,21 +17,27 @@ export function renderDiff(diff: SongDiff, map: SongMap, instruments: Instrument
   view.className = "diff";
   const pairs = pairPatterns(diff.patterns);
   const tracks = trackIndices(diff.tracks);
+  // The song's shape reads across the full width, then the three lists share what is left
   view.append(
-    meta(diff),
-    section("tracks", trackList(diff.tracks)),
-    section(
-      "arrangement",
-      renderMap({
-        map,
-        names: byTrack(diff.tracks, tracks),
-        pairs: pairs.newer,
-        changed: changedByPattern(diff.patterns, tracks),
-      }),
-    ),
-    renderInstruments(instruments, diff.instruments),
-    section("sequence", sequenceRows(diff.sequence, pairs)),
-    section("patterns", patternList(diff.patterns, trackNames(diff.tracks), pairs)),
+    group("wide", [
+      meta(diff),
+      section(
+        "arrangement",
+        renderMap({
+          map,
+          names: byTrack(diff.tracks, tracks),
+          pairs: pairs.newer,
+          changed: changedByPattern(diff.patterns, tracks),
+        }),
+      ),
+      renderTrackInstruments(instruments),
+      section("sequence", sequenceRows(diff.sequence, pairs)),
+    ]),
+    group("lists", [
+      section("tracks", trackList(diff.tracks)),
+      renderInstrumentChanges(diff.instruments),
+      section("patterns", patternList(diff.patterns, trackNames(diff.tracks), pairs)),
+    ]),
   );
   link(view);
   return view;
@@ -327,13 +334,15 @@ function patternRow(match: PatternMatch, names: readonly string[], pairs: Pairs)
   item.tabIndex = 0;
 
   if (match.kind === "added") {
-    item.className = "row added";
+    item.className = "row added open";
+    item.dataset.to = String(match.to.index);
     item.textContent = `+ ${name(match.to.index, match.to.name)}`;
     return item;
   }
 
   if (match.kind === "removed") {
-    item.className = "row removed";
+    item.className = "row removed open";
+    item.dataset.from = String(match.from.index);
     item.textContent = `- ${name(match.from.index, match.from.name)}`;
     return item;
   }

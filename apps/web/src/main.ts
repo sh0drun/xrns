@@ -44,6 +44,7 @@ worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
   if (result.kind === "pattern") {
     show(
       renderPattern({
+        side: result.side,
         from: result.from,
         to: result.to,
         diff: result.diff,
@@ -142,16 +143,27 @@ async function send(slot: Slot, file: File): Promise<void> {
   worker.postMessage(request, [request.bytes]);
 }
 
+/** A row carries one side or both: an added pattern has no older index to send */
 function openPattern(target: EventTarget | null): void {
   const row = target instanceof Element ? target.closest(".open") : null;
   if (!(row instanceof HTMLElement)) return;
 
-  const from = Number(row.dataset.from);
-  const to = Number(row.dataset.to);
-  if (!Number.isInteger(from) || !Number.isInteger(to)) return;
+  const from = patternIndex(row.dataset.from);
+  const to = patternIndex(row.dataset.to);
+  if (from === undefined && to === undefined) return;
 
-  const request: PatternRequest = { kind: "pattern", from, to };
+  const request: PatternRequest = {
+    kind: "pattern",
+    ...(from !== undefined && { from }),
+    ...(to !== undefined && { to }),
+  };
   worker.postMessage(request);
+}
+
+function patternIndex(value: string | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  const index = Number(value);
+  return Number.isInteger(index) ? index : undefined;
 }
 
 function showSlots(): void {

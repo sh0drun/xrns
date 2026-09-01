@@ -22,29 +22,17 @@ const LABELS: Record<SampleField, string> = {
   velocityEnd: "to velocity",
 };
 
-/**
- * Track against instrument, and what changed about the instruments themselves
- *
- * Nineteen of Tension's twenty tracks play exactly one instrument, so the mapping is
- * what carries the information and a share only prints where a track splits. The note
- * count is the second reading: it says which tracks the song is actually built on
- *
- * `changes` is absent for a single song, where there is nothing to compare against
- */
-export function renderInstruments(
-  instruments: Instruments,
-  changes?: readonly InstrumentMatch[],
-): Node {
+/** Beyond this many samples arriving or leaving at once, the names stop telling you anything */
+const NAMED_SAMPLES = 3;
+
+/** What changed about the instruments themselves, for a diff of two songs */
+export function renderInstrumentChanges(changes: readonly InstrumentMatch[]): Node {
   const element = document.createElement("section");
-  element.className = "instruments";
 
   const heading = document.createElement("h2");
   heading.textContent = "instruments";
-  element.append(heading);
 
-  if (changes !== undefined) element.append(changeList(changes));
-  element.append(body(instruments));
-
+  element.append(heading, changeList(changes));
   return element;
 }
 
@@ -79,24 +67,53 @@ function changeRow(match: InstrumentMatch): Node {
   const name =
     match.name.kind === "changed" ? `${match.name.from} → ${match.name.to}` : match.name.value;
   item.textContent = `~ ${slot(match.index)} ${name}`;
-
-  for (const one of match.samples) {
-    if (one.kind !== "identical") item.append(sampleDetail(one));
-  }
+  item.append(...sampleDetails(match.samples));
 
   return item;
 }
 
-function sampleDetail(match: SampleMatch): Node {
+/**
+ * Edited samples are always named, arrivals and departures only in small numbers
+ *
+ * A kit swapped wholesale loses forty samples at once, and forty names is a wall that
+ * buries the one field somebody actually changed
+ */
+function sampleDetails(samples: readonly SampleMatch[]): Node[] {
+  const edited = samples.filter((one) => one.kind === "modified");
+  const gained = samples.filter((one) => one.kind === "added");
+  const lost = samples.filter((one) => one.kind === "removed");
+
+  return [...edited.map(editedDetail), ...summarised("+", gained), ...summarised("-", lost)];
+}
+
+/** A renamed sample leads with both names, so printing the name field again says it twice */
+function editedDetail(match: SampleMatch): Node {
+  if (match.kind !== "modified") return detail(sampleName(match));
+
+  const renamed = match.fields.find((one) => one.field === "name");
+  const rest = match.fields.filter((one) => one.field !== "name");
+  const label =
+    renamed === undefined ? match.name : `${String(renamed.from)} → ${String(renamed.to)}`;
+
+  return detail(rest.length === 0 ? label : `${label}  ${rest.map(field).join(", ")}`);
+}
+
+function summarised(mark: string, samples: readonly SampleMatch[]): Node[] {
+  if (samples.length === 0) return [];
+  if (samples.length <= NAMED_SAMPLES) {
+    return samples.map((one) => detail(`${mark} ${sampleName(one)}`));
+  }
+  return [detail(`${mark} ${String(samples.length)} samples`)];
+}
+
+function sampleName(match: SampleMatch): string {
+  return match.kind === "modified" ? match.name : match.sample.name;
+}
+
+function detail(text: string): Node {
   const element = document.createElement("div");
   element.className = "row-detail";
-
-  if (match.kind === "added") element.textContent = `+ ${match.sample.name}`;
-  else if (match.kind === "removed") element.textContent = `- ${match.sample.name}`;
-  else if (match.kind === "modified") {
-    element.textContent = `${match.name}  ${match.fields.map(field).join(", ")}`;
-  }
-
+  element.textContent = text;
   return element;
 }
 
@@ -120,6 +137,24 @@ function quiet(text: string): Node {
   item.className = "row quiet";
   item.textContent = text;
   return item;
+}
+
+/**
+ * Which instrument each track plays
+ *
+ * Nineteen of Tension's twenty tracks play exactly one, so the mapping is what carries
+ * the information and a share only prints where a track splits. The note count is the
+ * second reading: it says which tracks the song is actually built on
+ */
+export function renderTrackInstruments(instruments: Instruments): Node {
+  const element = document.createElement("section");
+  element.className = "instruments";
+
+  const heading = document.createElement("h2");
+  heading.textContent = "track instruments";
+
+  element.append(heading, body(instruments));
+  return element;
 }
 
 function body(instruments: Instruments): Node {

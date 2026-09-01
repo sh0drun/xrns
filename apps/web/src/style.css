@@ -48,6 +48,39 @@ body.dragging {
   padding-inline: 2rem;
 }
 
+/*
+  A diff is a page of narrow lists, and at 88ch they stack into a very long scroll while
+  two thirds of a desktop screen sits empty
+*/
+@media (min-width: 1200px) {
+  .masthead,
+  #files,
+  #app {
+    max-width: 164ch;
+  }
+}
+
+/*
+  The arrangement and the sequence read across the whole width, since both are drawn
+  against the length of the song. The lists beside them are narrow and sit abreast
+*/
+.lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(46ch, 1fr));
+  gap: 0 4ch;
+  align-items: start;
+}
+
+/*
+  Not three equal columns: a track row is one short line and an instrument row carries a
+  sample name and a list of changed fields, which wraps to five lines when it is squeezed
+*/
+@media (min-width: 1200px) {
+  .lists {
+    grid-template-columns: 28ch minmax(0, 1fr) 28ch;
+  }
+}
+
 .masthead {
   display: flex;
   align-items: center;
@@ -374,6 +407,19 @@ body.dragging {
 
 .row.open {
   cursor: pointer;
+}
+
+/* A track grid is about forty characters wide, so several fit across rather than stacking */
+.pattern {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(46ch, 1fr));
+  gap: 0 4ch;
+  align-items: start;
+}
+
+.pattern > h2,
+.pattern > .drop-hint {
+  grid-column: 1 / -1;
 }
 
 .pattern h2 {

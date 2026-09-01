@@ -23,12 +23,19 @@ export interface ParseRequest {
   readonly bytes: ArrayBuffer;
 }
 
-/** Pattern indices, each in its own song's numbering */
+/**
+ * Pattern indices, each in its own song's numbering
+ *
+ * One side is absent for a pattern that only exists in one song, which is how an added
+ * or a removed pattern is opened
+ */
 export interface PatternRequest {
   readonly kind: "pattern";
-  readonly from: number;
-  readonly to: number;
+  readonly from?: number;
+  readonly to?: number;
 }
+
+export type PatternSide = "both" | "added" | "removed";
 
 export type WorkerRequest = ParseRequest | PatternRequest;
 
@@ -69,6 +76,7 @@ export type WorkerMessage =
     }
   | {
       readonly kind: "pattern";
+      readonly side: PatternSide;
       readonly from: Pattern;
       readonly to: Pattern;
       readonly diff: PatternDiff;
@@ -168,16 +176,38 @@ function instrumentName(song: Song, index: number): string {
   return name === "" ? index.toString(16).toUpperCase().padStart(2, "0") : name;
 }
 
+/**
+ * Stands in for the side a pattern does not exist on
+ *
+ * No tracks, so every aligned slot finds nothing there and the whole of the other side
+ * reads as added or removed. An added pattern needs no rendering path of its own
+ */
+const NO_PATTERN: Pattern = { index: -1, numberOfLines: 0, tracks: [] };
+
 function openPattern(request: PatternRequest): void {
   const before = loaded.get("before");
   const after = loaded.get("after");
   if (before === undefined || after === undefined || alignment === undefined) return;
 
-  const from = before.patterns[request.from];
-  const to = after.patterns[request.to];
+  const from = request.from === undefined ? NO_PATTERN : before.patterns[request.from];
+  const to = request.to === undefined ? NO_PATTERN : after.patterns[request.to];
   if (from === undefined || to === undefined) return;
 
   const diff = diffPattern(from, to, alignment);
   const linesPerBeat = { from: before.linesPerBeat, to: after.linesPerBeat };
-  scope.postMessage({ kind: "pattern", from, to, diff, alignment, linesPerBeat });
+  scope.postMessage({
+    kind: "pattern",
+    side: sideOf(request),
+    from,
+    to,
+    diff,
+    alignment,
+    linesPerBeat,
+  });
+}
+
+function sideOf(request: PatternRequest): PatternSide {
+  if (request.from === undefined) return "added";
+  if (request.to === undefined) return "removed";
+  return "both";
 }
